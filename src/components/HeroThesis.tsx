@@ -1,32 +1,38 @@
 import { Quote, TrendingUp, Users, Layers, ShieldCheck } from 'lucide-react';
 import { formatCurrencyCompact, formatEmployees, formatMultiplier } from '../utils/format';
-import type { AttributionMode, RoleFilter } from '../types/wealth';
+import type { CaptureBasis, GroupingMode, RoleFilter } from '../types/wealth';
 
 interface HeroThesisProps {
   totalWealthCreated: number;
-  totalPersonalStake: number;
+  totalKept: number;
   aggregateMultiplier: number;
   totalEmployees: number;
   visibleCount: number;
   roleFilter: RoleFilter;
-  attributionMode: AttributionMode;
+  captureBasis: CaptureBasis;
+  groupingMode: GroupingMode;
 }
 
 export function HeroThesis({
   totalWealthCreated,
-  totalPersonalStake,
+  totalKept,
   aggregateMultiplier,
   totalEmployees,
   visibleCount,
   roleFilter,
-  attributionMode,
+  captureBasis,
+  groupingMode,
 }: HeroThesisProps) {
   const scopeLabel =
     roleFilter === 'founders'
-      ? 'Founders & Co-Founders'
+      ? groupingMode === 'teams'
+        ? 'founding teams & solo founders'
+        : 'founders & co-founders'
       : roleFilter === 'builders'
-        ? 'Founders & Key Builders'
-        : 'All Index Billionaires';
+        ? 'builders & founding teams'
+        : 'index entries';
+
+  const isNetWorthBasis = captureBasis === 'netWorth';
 
   return (
     <section className="border-b border-[#E5E5E0] bg-[#F8F7F4]">
@@ -46,14 +52,21 @@ export function HeroThesis({
               Standard rich lists rank founders solely by the fraction of equity sitting in their own
               accounts. As Jeff Bezos explained — and as David Senra &amp; Tobi Lütke highlighted on{' '}
               <em className="font-medium text-[#111111]">Founders</em> — a public company worth
-              trillions where the founder owns ~10% represents far more wealth unlocked for pension
-              funds, 401(k)s, employees, and public shareholders than the founder ever kept.
+              trillions represents far more wealth unlocked for pension funds, 401(k)s, employees,
+              and public shareholders than the founding team kept.
             </p>
 
             {/* Formula Strip */}
             <div className="mt-5 rounded-sm border border-[#E5E5E0] bg-white p-3.5 sm:p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-[#5C5C58]">
-                Core Public Equity Formula
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5C5C58]">
+                  {isNetWorthBasis
+                    ? 'Net Wealth Capture Formula (Diversification-Proof)'
+                    : 'Direct Public Equity Formula'}
+                </span>
+                <span className="font-mono text-[10px] font-semibold uppercase text-[#0B7A5C]">
+                  {groupingMode === 'teams' ? 'Co-Founders Bucketed by Company' : 'Individual Stake-Weighted'}
+                </span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 font-mono text-xs sm:text-sm">
                 <span className="rounded bg-[#F8F7F4] px-2.5 py-1 font-semibold text-[#111111] border border-[#E5E5E0]">
@@ -61,13 +74,18 @@ export function HeroThesis({
                 </span>
                 <span className="font-bold text-[#5C5C58]">−</span>
                 <span className="rounded bg-amber-50 px-2.5 py-1 font-semibold text-[#B45309] border border-amber-200">
-                  Personal Stake Kept
+                  {isNetWorthBasis ? 'Total Net Worth Kept' : 'Remaining Direct Stock'}
                 </span>
                 <span className="font-bold text-[#5C5C58]">=</span>
                 <span className="rounded bg-[#0B7A5C]/10 px-2.5 py-1 font-bold text-[#075942] border border-[#0B7A5C]/30">
-                  Public Wealth Created for Others
+                  Wealth Created for Others
                 </span>
               </div>
+              <p className="mt-2 text-[11px] leading-relaxed text-[#5C5C58]">
+                {isNetWorthBasis
+                  ? 'Subtracting total net worth captures shares sold & diversified over time (e.g. Bill Gates via Cascade Investment) so diversification never inflates multipliers.'
+                  : 'Subtracting remaining direct public stock shows the current public cap-table split between inside founders and outside shareholders.'}
+              </p>
             </div>
           </div>
 
@@ -92,10 +110,10 @@ export function HeroThesis({
               <div className="mt-4 border-t border-[#E5E5E0] pt-3.5 text-xs text-[#5C5C58] flex items-start gap-2">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#0B7A5C]" />
                 <span>
-                  Measured strictly on <strong className="text-[#111111]">S&amp;P 500</strong> and{' '}
-                  <strong className="text-[#111111]">Nasdaq-100</strong> public equities matched
-                  against the live Forbes Real-Time Billionaires list — excluding passive portfolio
-                  stocks and unpriced private ventures.
+                  Measured on <strong className="text-[#111111]">S&amp;P 500</strong> and{' '}
+                  <strong className="text-[#111111]">Nasdaq-100</strong> equities matched against
+                  live Forbes Real-Time Billionaires, grouping co-founders into unified teams so no
+                  company is double-counted.
                 </span>
               </div>
             </div>
@@ -113,20 +131,22 @@ export function HeroThesis({
               {formatCurrencyCompact(totalWealthCreated)}
             </div>
             <div className="mt-1 text-xs text-[#5C5C58]">
-              Across {visibleCount} {scopeLabel.toLowerCase()} ({attributionMode === 'split' ? 'co-founder split' : 'company view'})
+              Across {visibleCount} {scopeLabel}
             </div>
           </div>
 
           <div className="rounded-sm border border-[#E5E5E0] bg-white p-4">
             <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-[#B45309]">
-              <span>Personal Stake Kept</span>
+              <span>{isNetWorthBasis ? 'Total Net Worth Kept' : 'Direct Equity Kept'}</span>
               <Layers className="h-3.5 w-3.5" />
             </div>
             <div className="mt-1.5 font-mono text-2xl font-bold tracking-tight text-[#111111] tabular-nums sm:text-[1.75rem]">
-              {formatCurrencyCompact(totalPersonalStake)}
+              {formatCurrencyCompact(totalKept)}
             </div>
             <div className="mt-1 text-xs text-[#5C5C58]">
-              Equity held personally in matched public firms
+              {isNetWorthBasis
+                ? 'Combined Forbes net worth of matched builders'
+                : 'Remaining direct stock in attributed firms'}
             </div>
           </div>
 

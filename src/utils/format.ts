@@ -1,4 +1,4 @@
-import type { AttributionMode, PersonEntry, RoleCategory } from '../types/wealth';
+import type { CaptureBasis, DisplayEntry, RoleCategory } from '../types/wealth';
 
 export function formatCurrencyCompact(value: number | null | undefined, decimals = 2): string {
   if (value == null || !Number.isFinite(value)) return '—';
@@ -35,31 +35,35 @@ export function formatNumber(count: number | null | undefined): string {
 export function formatMultiplier(mult: number | null | undefined): string {
   if (mult == null || !Number.isFinite(mult) || mult <= 0) return '—';
   if (mult >= 100) return `${Math.round(mult).toLocaleString()}×`;
-  if (mult >= 10) return `${mult.toFixed(1)}×`;
   return `${mult.toFixed(1)}×`;
 }
 
 export function formatPercent(pct: number | null | undefined): string {
   if (pct == null || !Number.isFinite(pct)) return '—';
   if (pct < 0.1 && pct > 0) return `${pct.toFixed(2)}%`;
-  if (pct < 10) return `${pct.toFixed(1)}%`;
   return `${pct.toFixed(1)}%`;
 }
 
-export function getWealthCreated(person: PersonEntry, mode: AttributionMode): number {
-  return mode === 'full' ? person.totalWealthCreatedFullUsd : person.totalWealthCreatedSplitUsd;
+export function getEntryWealthCreated(entry: DisplayEntry, basis: CaptureBasis): number {
+  return basis === 'netWorth'
+    ? entry.wealthCreatedNetWorthUsd
+    : entry.wealthCreatedDirectEquityUsd;
 }
 
-export function getMultiplier(person: PersonEntry, mode: AttributionMode): number {
-  return mode === 'full' ? person.aggregateMultiplierFull : person.aggregateMultiplierSplit;
+export function getEntryKept(entry: DisplayEntry, basis: CaptureBasis): number {
+  return basis === 'netWorth' ? entry.keptNetWorthUsd : entry.keptDirectEquityUsd;
 }
 
-export function getWealthRank(person: PersonEntry, mode: AttributionMode): number {
-  return mode === 'full' ? person.wealthRankFull : person.wealthRankSplit;
+export function getEntryMultiplier(entry: DisplayEntry, basis: CaptureBasis): number {
+  return basis === 'netWorth' ? entry.multiplierNetWorth : entry.multiplierDirectEquity;
 }
 
-export function getRankDelta(person: PersonEntry, mode: AttributionMode): number {
-  return mode === 'full' ? person.rankDeltaFull : person.rankDeltaSplit;
+export function getEntryRank(entry: DisplayEntry, basis: CaptureBasis): number {
+  return basis === 'netWorth' ? entry.wealthRankNetWorth : entry.wealthRankDirectEquity;
+}
+
+export function getEntryRankDelta(entry: DisplayEntry, basis: CaptureBasis): number {
+  return basis === 'netWorth' ? entry.rankDeltaNetWorth : entry.rankDeltaDirectEquity;
 }
 
 export function roleBadgeClasses(role: RoleCategory): string {

@@ -8,11 +8,13 @@ Inspired by **Jeff Bezos's** public-equity thesis and discussed on **David Senra
 
 ---
 
-## Core Formula
+## Core Formula & Methodology
 
-$$\text{Public Wealth Created for Others} = \text{Company Market Cap} - \text{Builder's Personal Stake Kept}$$
+$$\text{Net Public Wealth Created for Others} = \text{Company Market Cap} - \text{Founder / Team Total Net Worth}$$
 
-For example, if Amazon's public market capitalization is ~$2.64T and Jeff Bezos personally holds ~$216B, then **~$2.42T** of Amazon's equity value belongs to outside shareholders — an **~11.2×** wealth creation multiplier for every dollar he kept.
+Why **Total Net Worth** instead of only remaining direct shares? If a founder sells stock over time and diversifies into other assets (such as Bill Gates's Cascade Investment), subtracting only remaining direct shares artificially inflates their wealth-creation multiplier (`243×` vs. `~29×`). Subtracting total Forbes net worth prevents diversification from inflating multipliers, while a built-in toggle lets visitors compare **Total Net Worth Basis** against **Direct Equity Basis**.
+
+In addition, **Founding Team Bucketing** groups co-founders of the same company (such as Mark Zuckerberg, Eduardo Saverin, and Dustin Moskovitz at Meta) into a single team bucket led by the primary founder — preventing minor co-founders from ranking ahead with inflated multipliers and eliminating company double-counting. An **Individuals** toggle distributes team wealth proportionally by personal net worth/stake.
 
 ---
 

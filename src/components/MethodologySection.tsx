@@ -91,25 +91,29 @@ export function MethodologySection({ summary }: MethodologySectionProps) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-sm border border-[#E5E5E0] p-4">
                 <h4 className="font-serif text-base font-bold text-[#111111]">
-                  2. Filtering Passive Holdings
+                  2. Total Net Worth vs. Direct Equity
                 </h4>
                 <p className="mt-1.5 text-xs leading-relaxed text-[#5C5C58]">
-                  Owning stock as a passive investor does not mean you created the company. We
-                  filter out non-founder passive investment portfolios (such as Cascade Investment
-                  stakes or M&amp;A share rollovers) and list them transparently in each
-                  person&apos;s drawer under <em>Excluded Holdings</em>.
+                  A founder who sells stock and parks proceeds in a family office (e.g., Bill Gates
+                  diversifying Microsoft shares via Cascade Investment) did not transfer that wealth
+                  to society. Subtracting <strong>Total Forbes Net Worth</strong> keeps diversified
+                  proceeds inside &ldquo;kept&rdquo; wealth (making Gates ~29× instead of ~243×).
+                  Switch to <strong>Direct Equity</strong> anytime to inspect the raw cap-table
+                  split.
                 </p>
               </div>
 
               <div className="rounded-sm border border-[#E5E5E0] p-4">
                 <h4 className="font-serif text-base font-bold text-[#111111]">
-                  3. Full vs. Co-Founder Split
+                  3. Founding Team Bucketing
                 </h4>
                 <p className="mt-1.5 text-xs leading-relaxed text-[#5C5C58]">
-                  In <strong>Full Company</strong> mode, each founder is shown alongside the total
-                  outside equity of their company. In <strong>Co-Founder Split</strong> mode,
-                  multi-founder firms (e.g., Alphabet&apos;s Page &amp; Brin or Airbnb&apos;s three
-                  co-founders) divide outside equity equally so totals never double-count.
+                  In <strong>Founding Teams</strong> mode, co-founders of the same company (e.g.,
+                  Mark Zuckerberg, Eduardo Saverin &amp; Dustin Moskovitz at Meta) are pooled into
+                  one team bucket led by the primary founder — zero arbitrary credit weights, zero
+                  inflated 800× multipliers, and zero double-counting. In{' '}
+                  <strong>Individuals</strong> mode, each team&apos;s outside wealth is weighted
+                  proportionally by personal net worth/stake.
                 </p>
               </div>
             </div>

@@ -8,11 +8,18 @@ import { RippleEffectExplainer } from './components/RippleEffectExplainer';
 import { MethodologySection } from './components/MethodologySection';
 import { PersonDrawer } from './components/PersonDrawer';
 import { Footer } from './components/Footer';
-import { getMultiplier, getRankDelta, getWealthCreated } from './utils/format';
+import { buildDisplayEntries } from './utils/aggregation';
+import {
+  getEntryKept,
+  getEntryMultiplier,
+  getEntryRankDelta,
+  getEntryWealthCreated,
+} from './utils/format';
 import type {
-  AttributionMode,
+  CaptureBasis,
+  DisplayEntry,
+  GroupingMode,
   IndexFilter,
-  PersonEntry,
   RoleFilter,
   SortKey,
   WealthIndexData,
@@ -26,9 +33,10 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('founders');
   const [indexFilter, setIndexFilter] = useState<IndexFilter>('all');
-  const [attributionMode, setAttributionMode] = useState<AttributionMode>('full');
+  const [captureBasis, setCaptureBasis] = useState<CaptureBasis>('netWorth');
+  const [groupingMode, setGroupingMode] = useState<GroupingMode>('teams');
   const [sortKey, setSortKey] = useState<SortKey>('wealthCreated');
-  const [selectedPerson, setSelectedPerson] = useState<PersonEntry | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -44,12 +52,11 @@ export function App() {
         setData(json);
         setLoading(false);
 
-        // Deep link support (#person/jeff-bezos)
+        // Deep link support (#person/jeff-bezos or #person/team-META)
         const hash = window.location.hash;
         if (hash.startsWith('#person/')) {
-          const uri = decodeURIComponent(hash.slice('#person/'.length));
-          const found = json.people.find((p) => p.uri === uri);
-          if (found) setSelectedPerson(found);
+          const target = decodeURIComponent(hash.slice('#person/'.length));
+          setSelectedId(target);
         }
       })
       .catch((err: Error) => {
@@ -78,51 +85,69 @@ export function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  const handleSelectPerson = (person: PersonEntry | null) => {
-    setSelectedPerson(person);
-    if (person) {
-      window.history.replaceState(null, '', `#person/${encodeURIComponent(person.uri)}`);
-    } else if (window.location.hash.startsWith('#person/')) {
-      window.history.replaceState(null, '', '#leaderboard');
+  const allEntries = useMemo(() => {
+    if (!data) return [];
+    return buildDisplayEntries(data.people, groupingMode);
+  }, [data, groupingMode]);
+
+  const selectedEntry = useMemo(() => {
+    if (!selectedId) return null;
+    return (
+      allEntries.find(
+        (e) => e.id === selectedId || e.members.some((m) => m.uri === selectedId),
+      ) ?? null
+    );
+  }, [allEntries, selectedId]);
+
+  const handleSelectEntry = (entry: DisplayEntry | null) => {
+    if (entry) {
+      setSelectedId(entry.id);
+      window.history.replaceState(null, '', `#person/${encodeURIComponent(entry.id)}`);
+    } else {
+      setSelectedId(null);
+      if (window.location.hash.startsWith('#person/')) {
+        window.history.replaceState(null, '', '#leaderboard');
+      }
     }
   };
 
   const countsByRole = useMemo(() => {
-    if (!data) return { founders: 0, builders: 0, all: 0 };
     return {
-      founders: data.people.filter((p) => p.isFounder).length,
-      builders: data.people.filter((p) => p.isBuilder).length,
-      all: data.people.length,
+      founders: allEntries.filter((e) => e.isFounder).length,
+      builders: allEntries.filter((e) => e.isBuilder).length,
+      all: allEntries.length,
     };
-  }, [data]);
+  }, [allEntries]);
 
-  const filteredPeople = useMemo(() => {
-    if (!data) return [];
+  const filteredEntries = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
-    const list = data.people.filter((p) => {
-      if (roleFilter === 'founders' && !p.isFounder) return false;
-      if (roleFilter === 'builders' && !p.isBuilder) return false;
+    const list = allEntries.filter((entry) => {
+      if (roleFilter === 'founders' && !entry.isFounder) return false;
+      if (roleFilter === 'builders' && !entry.isBuilder) return false;
 
-      if (indexFilter === 'sp500' && !p.attributions.some((a) => a.indices.includes('S&P 500'))) {
+      if (
+        indexFilter === 'sp500' &&
+        !entry.attributions.some((a) => a.indices.includes('S&P 500'))
+      ) {
         return false;
       }
       if (
         indexFilter === 'nasdaq100' &&
-        !p.attributions.some((a) => a.indices.includes('Nasdaq-100'))
+        !entry.attributions.some((a) => a.indices.includes('Nasdaq-100'))
       ) {
         return false;
       }
-      if (indexFilter === 'both' && !p.attributions.some((a) => a.inBoth)) {
+      if (indexFilter === 'both' && !entry.attributions.some((a) => a.inBoth)) {
         return false;
       }
 
       if (q) {
         const hay = [
-          p.name,
-          p.country,
-          p.sourceLabel,
-          ...p.attributions.flatMap((a) => [a.companyName, a.ticker, a.sector, a.subIndustry]),
+          entry.displayName,
+          entry.subtitle ?? '',
+          ...entry.members.flatMap((m) => [m.name, m.country, m.sourceLabel]),
+          ...entry.attributions.flatMap((a) => [a.companyName, a.ticker, a.sector, a.subIndustry]),
         ]
           .join(' ')
           .toLowerCase();
@@ -134,64 +159,70 @@ export function App() {
     list.sort((a, b) => {
       switch (sortKey) {
         case 'wealthCreated':
-          return getWealthCreated(b, attributionMode) - getWealthCreated(a, attributionMode);
+          return (
+            getEntryWealthCreated(b, captureBasis) - getEntryWealthCreated(a, captureBasis)
+          );
         case 'multiplier':
-          return getMultiplier(b, attributionMode) - getMultiplier(a, attributionMode);
+          return getEntryMultiplier(b, captureBasis) - getEntryMultiplier(a, captureBasis);
         case 'employees':
           return b.totalEmployees - a.totalEmployees;
         case 'netWorth':
-          return b.forbesNetWorthUsd - a.forbesNetWorthUsd;
+          return getEntryKept(b, captureBasis) - getEntryKept(a, captureBasis);
         case 'rankDelta':
-          return getRankDelta(b, attributionMode) - getRankDelta(a, attributionMode);
+          return getEntryRankDelta(b, captureBasis) - getEntryRankDelta(a, captureBasis);
       }
     });
 
     return list;
-  }, [data, searchQuery, roleFilter, indexFilter, attributionMode, sortKey]);
+  }, [allEntries, searchQuery, roleFilter, indexFilter, captureBasis, sortKey]);
 
-  // Deduplicated company-level KPI totals for the active filter so aggregates never double-count co-founders
+  // Deduplicated company-level KPI totals for the active filtered view
   const kpis = useMemo(() => {
-    const companyMap = new Map<
-      string,
-      { marketCap: number; employees: number; stakeSum: number }
-    >();
+    const companyMap = new Map<string, { marketCap: number; employees: number }>();
+    const seenPeople = new Map<string, { nw: number; stake: number }>();
 
-    for (const p of filteredPeople) {
-      for (const a of p.attributions) {
-        const existing = companyMap.get(a.ticker);
-        if (!existing) {
+    for (const entry of filteredEntries) {
+      for (const a of entry.attributions) {
+        if (!companyMap.has(a.ticker)) {
           companyMap.set(a.ticker, {
             marketCap: a.marketCapUsd,
             employees: a.employees ?? 0,
-            stakeSum: a.personalStakeUsd,
           });
-        } else {
-          existing.stakeSum += a.personalStakeUsd;
+        }
+      }
+      for (const m of entry.members) {
+        if (!seenPeople.has(m.uri)) {
+          seenPeople.set(m.uri, {
+            nw: m.forbesNetWorthUsd,
+            stake: m.totalPersonalStakeUsd,
+          });
         }
       }
     }
 
-    let totalWealthCreated = 0;
-    let totalPersonalStake = 0;
+    let totalMarketCap = 0;
     let totalEmployees = 0;
-
-    for (const comp of companyMap.values()) {
-      const cappedStake = Math.min(comp.stakeSum, comp.marketCap);
-      totalPersonalStake += cappedStake;
-      totalWealthCreated += Math.max(0, comp.marketCap - cappedStake);
-      totalEmployees += comp.employees;
+    for (const c of companyMap.values()) {
+      totalMarketCap += c.marketCap;
+      totalEmployees += c.employees;
     }
 
-    const aggregateMultiplier =
-      totalPersonalStake > 0 ? totalWealthCreated / totalPersonalStake : 0;
+    let rawKept = 0;
+    for (const p of seenPeople.values()) {
+      rawKept += captureBasis === 'netWorth' ? p.nw : p.stake;
+    }
+
+    const totalKept = Math.min(rawKept, totalMarketCap);
+    const totalWealthCreated = Math.max(0, totalMarketCap - totalKept);
+    const aggregateMultiplier = totalKept > 0 ? totalWealthCreated / totalKept : 0;
 
     return {
       totalWealthCreated,
-      totalPersonalStake,
+      totalKept,
       aggregateMultiplier,
       totalEmployees,
     };
-  }, [filteredPeople]);
+  }, [filteredEntries, captureBasis]);
 
   return (
     <div className="min-h-screen bg-white text-[#111111]">
@@ -225,18 +256,19 @@ export function App() {
         <>
           <HeroThesis
             totalWealthCreated={kpis.totalWealthCreated}
-            totalPersonalStake={kpis.totalPersonalStake}
+            totalKept={kpis.totalKept}
             aggregateMultiplier={kpis.aggregateMultiplier}
             totalEmployees={kpis.totalEmployees}
-            visibleCount={filteredPeople.length}
+            visibleCount={filteredEntries.length}
             roleFilter={roleFilter}
-            attributionMode={attributionMode}
+            captureBasis={captureBasis}
+            groupingMode={groupingMode}
           />
 
           <TopBuildersVisual
-            people={filteredPeople}
-            attributionMode={attributionMode}
-            onSelectPerson={handleSelectPerson}
+            entries={filteredEntries}
+            captureBasis={captureBasis}
+            onSelectEntry={handleSelectEntry}
           />
 
           <FilterBar
@@ -247,18 +279,20 @@ export function App() {
             onRoleFilterChange={setRoleFilter}
             indexFilter={indexFilter}
             onIndexFilterChange={setIndexFilter}
-            attributionMode={attributionMode}
-            onAttributionModeChange={setAttributionMode}
+            captureBasis={captureBasis}
+            onCaptureBasisChange={setCaptureBasis}
+            groupingMode={groupingMode}
+            onGroupingModeChange={setGroupingMode}
             sortKey={sortKey}
             onSortKeyChange={setSortKey}
-            resultCount={filteredPeople.length}
+            resultCount={filteredEntries.length}
             countsByRole={countsByRole}
           />
 
           <LeaderboardTable
-            people={filteredPeople}
-            attributionMode={attributionMode}
-            onSelectPerson={handleSelectPerson}
+            entries={filteredEntries}
+            captureBasis={captureBasis}
+            onSelectEntry={handleSelectEntry}
           />
 
           <RippleEffectExplainer />
@@ -269,9 +303,10 @@ export function App() {
       <Footer summary={data?.summary ?? null} />
 
       <PersonDrawer
-        person={selectedPerson}
-        attributionMode={attributionMode}
-        onClose={() => handleSelectPerson(null)}
+        entry={selectedEntry}
+        captureBasis={captureBasis}
+        groupingMode={groupingMode}
+        onClose={() => handleSelectEntry(null)}
       />
     </div>
   );

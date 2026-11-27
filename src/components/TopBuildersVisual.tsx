@@ -3,35 +3,29 @@ import {
   formatCurrencyCompact,
   formatEmployees,
   formatMultiplier,
-  getMultiplier,
-  getWealthCreated,
+  getEntryKept,
+  getEntryMultiplier,
+  getEntryWealthCreated,
   roleBadgeClasses,
 } from '../utils/format';
-import type { AttributionMode, PersonEntry } from '../types/wealth';
+import type { CaptureBasis, DisplayEntry } from '../types/wealth';
 
 interface TopBuildersVisualProps {
-  people: PersonEntry[];
-  attributionMode: AttributionMode;
-  onSelectPerson: (person: PersonEntry) => void;
+  entries: DisplayEntry[];
+  captureBasis: CaptureBasis;
+  onSelectEntry: (entry: DisplayEntry) => void;
 }
 
 export function TopBuildersVisual({
-  people,
-  attributionMode,
-  onSelectPerson,
+  entries,
+  captureBasis,
+  onSelectEntry,
 }: TopBuildersVisualProps) {
-  const top = people.slice(0, 8);
+  const top = entries.slice(0, 8);
   if (top.length === 0) return null;
 
   const maxTotal = Math.max(
-    ...top.map((p) => {
-      const created = getWealthCreated(p, attributionMode);
-      const stake =
-        attributionMode === 'full'
-          ? p.totalPersonalStakeUsd
-          : p.attributions.reduce((acc, a) => acc + a.coFounderSplitStakeUsd, 0);
-      return created + stake;
-    }),
+    ...top.map((e) => getEntryWealthCreated(e, captureBasis) + getEntryKept(e, captureBasis)),
     1,
   );
 
@@ -44,13 +38,15 @@ export function TopBuildersVisual({
               Visual Comparison · Top {top.length} in Current View
             </div>
             <h3 className="mt-1 font-serif text-2xl font-bold tracking-tight text-[#111111]">
-              Personal Stake Kept vs. Public Wealth Created
+              {captureBasis === 'netWorth'
+                ? 'Total Net Worth Kept vs. Public Wealth Created'
+                : 'Direct Stock Kept vs. Public Wealth Created'}
             </h3>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-xs text-[#5C5C58]">
             <span className="inline-flex items-center gap-1.5">
               <span className="inline-block h-2.5 w-2.5 rounded-xs bg-[#B45309]" />
-              Personal Stake Kept
+              {captureBasis === 'netWorth' ? 'Net Worth Kept' : 'Direct Stock Kept'}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="inline-block h-2.5 w-2.5 rounded-xs bg-[#0B7A5C]" />
@@ -60,24 +56,21 @@ export function TopBuildersVisual({
         </div>
 
         <div className="mt-6 space-y-3">
-          {top.map((person, index) => {
-            const created = getWealthCreated(person, attributionMode);
-            const stake =
-              attributionMode === 'full'
-                ? person.totalPersonalStakeUsd
-                : person.attributions.reduce((acc, a) => acc + a.coFounderSplitStakeUsd, 0);
-            const total = Math.max(created + stake, 1);
+          {top.map((entry, index) => {
+            const created = getEntryWealthCreated(entry, captureBasis);
+            const kept = getEntryKept(entry, captureBasis);
+            const total = Math.max(created + kept, 1);
             const barWidthPct = Math.max((total / maxTotal) * 100, 3);
-            const keptSharePct = (stake / total) * 100;
+            const keptSharePct = (kept / total) * 100;
             const othersSharePct = 100 - keptSharePct;
-            const mult = getMultiplier(person, attributionMode);
-            const tickers = person.attributions.map((a) => a.ticker).join(', ');
+            const mult = getEntryMultiplier(entry, captureBasis);
+            const tickers = entry.attributions.map((a) => a.ticker).join(', ');
 
             return (
               <button
-                key={person.uri}
+                key={entry.id}
                 type="button"
-                onClick={() => onSelectPerson(person)}
+                onClick={() => onSelectEntry(entry)}
                 className="group block w-full rounded-sm border border-[#E5E5E0] bg-[#F8F7F4]/60 p-3 text-left transition-all hover:border-[#111111] hover:bg-white cursor-pointer"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -86,14 +79,14 @@ export function TopBuildersVisual({
                       {index + 1}.
                     </span>
                     <span className="font-serif text-base font-bold text-[#111111] group-hover:text-[#0B7A5C] transition-colors truncate">
-                      {person.name}
+                      {entry.displayName}
                     </span>
                     <span
                       className={`hidden sm:inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${roleBadgeClasses(
-                        person.primaryRole,
+                        entry.primaryRole,
                       )}`}
                     >
-                      {person.primaryRole}
+                      {entry.isTeam ? `Team (${entry.teamMembersCount})` : entry.primaryRole}
                     </span>
                     <span className="font-mono text-[11px] font-medium text-[#5C5C58] bg-white border border-[#E5E5E0] rounded-sm px-1.5 py-0.5">
                       {tickers}
@@ -101,10 +94,10 @@ export function TopBuildersVisual({
                   </div>
 
                   <div className="flex items-center gap-3 text-xs tabular-nums">
-                    {person.totalEmployees > 0 && (
+                    {entry.totalEmployees > 0 && (
                       <span className="hidden md:inline-flex items-center gap-1 text-[#5C5C58]">
                         <Users className="h-3 w-3" />
-                        {formatEmployees(person.totalEmployees)} jobs
+                        {formatEmployees(entry.totalEmployees)} jobs
                       </span>
                     )}
                     <span className="rounded-sm bg-[#0B7A5C]/10 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-[#075942]">
@@ -126,8 +119,8 @@ export function TopBuildersVisual({
                     >
                       <div
                         className="h-full bg-[#B45309] shrink-0"
-                        style={{ width: `${Math.max(keptSharePct, stake > 0 ? 1.5 : 0)}%` }}
-                        title={`Personal stake kept: ${formatCurrencyCompact(stake)}`}
+                        style={{ width: `${Math.max(keptSharePct, kept > 0 ? 1.5 : 0)}%` }}
+                        title={`Kept: ${formatCurrencyCompact(kept)}`}
                       />
                       <div
                         className="h-full bg-[#0B7A5C]"
@@ -137,7 +130,7 @@ export function TopBuildersVisual({
                     </div>
                   </div>
                   <span className="hidden sm:inline font-mono text-[11px] text-[#5C5C58] w-28 text-right tabular-nums">
-                    Kept: {formatCurrencyCompact(stake)}
+                    Kept: {formatCurrencyCompact(kept)}
                   </span>
                 </div>
               </button>

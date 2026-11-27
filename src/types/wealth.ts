@@ -6,7 +6,8 @@ export type RoleCategory =
 
 export type RoleFilter = 'founders' | 'builders' | 'all';
 export type IndexFilter = 'all' | 'sp500' | 'nasdaq100' | 'both';
-export type AttributionMode = 'full' | 'split';
+export type CaptureBasis = 'netWorth' | 'directEquity';
+export type GroupingMode = 'teams' | 'individuals';
 export type SortKey =
   | 'wealthCreated'
   | 'multiplier'
@@ -82,6 +83,37 @@ export interface PersonEntry {
   aggregateMultiplierSplit: number;
   totalEmployees: number;
   totalRevenueUsd: number;
+  excludedHoldings: ExcludedHolding[];
+}
+
+export interface DisplayEntry {
+  id: string;
+  isTeam: boolean;
+  displayName: string;
+  subtitle: string | null;
+  leadPerson: PersonEntry;
+  members: PersonEntry[];
+  primaryRole: RoleCategory;
+  isFounder: boolean;
+  isBuilder: boolean;
+  attributions: CompanyAttribution[];
+  marketCapUsd: number;
+  keptNetWorthUsd: number;
+  keptDirectEquityUsd: number;
+  wealthCreatedNetWorthUsd: number;
+  wealthCreatedDirectEquityUsd: number;
+  multiplierNetWorth: number;
+  multiplierDirectEquity: number;
+  teamWeightPct: number | null;
+  teamMembersCount: number;
+  totalEmployees: number;
+  totalRevenueUsd: number;
+  forbesRank: number;
+  forbesNetWorthUsd: number;
+  wealthRankNetWorth: number;
+  wealthRankDirectEquity: number;
+  rankDeltaNetWorth: number;
+  rankDeltaDirectEquity: number;
   excludedHoldings: ExcludedHolding[];
 }
 
