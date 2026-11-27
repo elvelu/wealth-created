@@ -1,12 +1,14 @@
-name: Deploy to GitHub Pages
+name: Refresh Data & Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '0 22 * * *' # Daily at 22:00 UTC (after U.S. market close)
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -19,6 +21,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python (for scheduled/manual live data refresh)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Refresh live Forbes & Index data
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          if python scripts/fetch_data.py && python -c "import json; d=json.load(open('public/data/wealth-index.json')); assert len(d['people'])>=50"; then
+            echo "Live data refresh succeeded and passed validation."
+          else
+            echo "Warning: live data refresh failed or incomplete; restoring committed snapshot."
+            git checkout -- public/data/wealth-index.json
+          fi
+
+      - name: Commit updated data snapshot
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet public/data/wealth-index.json; then
+            git add public/data/wealth-index.json
+            git commit -m "chore(data): daily live wealth index refresh [skip ci]"
+            git push origin HEAD:main
+          else
+            echo "No data changes to commit."
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22

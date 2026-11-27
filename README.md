@@ -49,6 +49,20 @@ npm run build
 
 ---
 
+## Daily Automatic Updates (GitHub Actions)
+
+The workflow in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) automatically refreshes the live dataset and redeploys the site every day at **22:00 UTC** (after U.S. market close), or anytime you click **Run workflow** in the repository's **Actions** tab:
+
+1. Runs `python scripts/fetch_data.py` to fetch the latest S&P 500, Nasdaq-100, Forbes Real-Time Billionaires, and StockAnalysis fundamentals.
+2. Validates the generated `public/data/wealth-index.json` (falling back safely to the last committed snapshot if an upstream API temporarily errors).
+3. Commits updated data to `main` (`[skip ci]`) and builds/deploys the updated static bundle to GitHub Pages.
+
+To enable it on GitHub:
+- **Settings → Pages → Build and deployment → Source:** select **GitHub Actions**.
+- **Settings → Actions → General → Workflow permissions:** ensure **Read and write permissions** is enabled (requested by `contents: write` in the workflow).
+
+---
+
 ## Project Structure
 
 - `scripts/fetch_data.py` — Live data scraper/aggregator generating `public/data/wealth-index.json`
